@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Polígono Interactivo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-family: Arial, sans-serif;
+      }
+      canvas {
+        border: 1px solid #ccc;
+      }
+      input {
+        margin: 5px;
+        padding: 5px;
+      }
+      table {
+        margin-top: 20px;
+        border-collapse: collapse;
+        width: 80%;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .exceeded {
+        background-color: #ffcccc;
+      }
+      .editable {
+        width: 60px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Calcula el área de tu huerto</h1>
+    <div>
+      <label for="numPoints">Cantidad de puntos:</label>
+      <input id="numPoints" type="number" value="4" min="3" />
+      <button onclick="initializePolygon()">Generar Polígono</button>
+    </div>
+    <p>
+      Mueve los puntos para cambiar el polígono. El área se calcula
+      automáticamente.
+    </p>
+    <div id="area-display" style="font-size: 18px; margin-top: 10px">
+      Área disponible: 0 m²
+    </div>
+    <div id="used-area-display" style="font-size: 18px; margin-top: 10px">
+      Área utilizada: 0 m²
+    </div>
+    <div>
+      <h2>Tabla de Verduras</h2>
+      <table id="vegetable-table">
+        <thead>
+          <tr>
+            <th>Verdura</th>
+            <th>Espacio (m²)</th>
+            <th>Rendimiento (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tomates</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="10"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>15</td>
+          </tr>
+          <tr>
+            <td>Lechugas</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="5"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>8</td>
+          </tr>
+          <tr>
+            <td>Zanahorias</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="7"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>12</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <script>
+      let points = [];
+      let draggedPoint = null;
+      let currentArea = 0;
+
+      function setup() {
+        createCanvas(800, 800);
+        initializePolygon(); // Generar polígono inicial
+      }
+
+      function draw() {
+        background(240);
+        noFill();
+        stroke(0);
+        strokeWeight(2);
+
+        // Dibujar líneas del polígono
+        beginShape();
+        points.forEach((p) => vertex(p.x, p.y));
+        endShape(CLOSE);
+
+        // Dibujar puntos
+        fill(0, 100, 255);
+        noStroke();
+        points.forEach((p) => ellipse(p.x, p.y, 10, 10));
+
+        // Dibujar longitudes en la gráfica
+        const lengths = calculateSideLengths(points);
+        for (let i = 0; i < points.length; i++) {
+          const nextIndex = (i + 1) % points.length;
+          const midX = (points[i].x + points[nextIndex].x) / 2;
+          const midY = (points[i].y + points[nextIndex].y) / 2;
+
+          fill(0);
+          noStroke();
+          textSize(14);
+          text((lengths[i] / 100).toFixed(1), midX, midY);
+        }
+
+        // Calcular y mostrar área
+        const area = calculatePolygonArea(points);
+        currentArea = area / 10000;
+        document.getElementById(
+          "area-display"
+        ).innerText = `Área disponible: ${currentArea.toFixed(2)} m²`;
+        updateTable();
+      }
+
+      function mousePressed() {
+        points.forEach((p) => {
+          if (dist(mouseX, mouseY, p.x, p.y) < 10) {
+            draggedPoint = p;
+          }
+        });
+      }
+
+      function mouseDragged() {
+        if (draggedPoint) {
+          draggedPoint.x = mouseX;
+          draggedPoint.y = mouseY;
+        }
+      }
+
+      function mouseReleased() {
+        draggedPoint = null;
+      }
+
+      function initializePolygon() {
+        const numPoints = parseInt(document.getElementById("numPoints").value);
+        points = [];
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = 150;
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (TWO_PI / numPoints) * i;
+          const x = centerX + radius * cos(angle);
+          const y = centerY + radius * sin(angle);
+          points.push({ x, y });
+        }
+      }
+
+      function calculateSideLengths(vertices) {
+        const lengths = [];
+        for (let i = 0; i < vertices.length; i++) {
+          const j = (i + 1) % vertices.length;
+          const dx = vertices[j].x - vertices[i].x;
+          const dy = vertices[j].y - vertices[i].y;
+          lengths.push(Math.sqrt(dx * dx + dy * dy));
+        }
+        return lengths;
+      }
+
+      function calculatePolygonArea(vertices) {
+        let n = vertices.length;
+        let area = 0;
+
+        for (let i = 0; i < n; i++) {
+          let j = (i + 1) % n;
+          area += vertices[i].x * vertices[j].y;
+          area -= vertices[j].x * vertices[i].y;
+        }
+
+        return Math.abs(area / 2);
+      }
+
+      function updateTable() {
+        const rows = document.querySelectorAll("#vegetable-table tbody tr");
+        let totalArea = 0;
+
+        rows.forEach((row) => {
+          const areaCell = row.querySelector(".area");
+          const requiredArea = parseFloat(areaCell.value) || 0;
+          totalArea += requiredArea;
+        });
+
+        document.getElementById(
+          "used-area-display"
+        ).innerText = `Área utilizada: ${totalArea.toFixed(2)} m²`;
+
+        // Verificar si el total excede el área disponible
+        rows.forEach((row) => {
+          const areaCell = row.querySelector(".area");
+          if (totalArea > currentArea) {
+            areaCell.classList.add("exceeded");
+          } else {
+            areaCell.classList.remove("exceeded");
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
