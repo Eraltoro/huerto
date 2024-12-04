@@ -22,7 +22,7 @@
       table {
         margin-top: 20px;
         border-collapse: collapse;
-        width: 80%;
+        width: 90%;
       }
       th,
       td {
@@ -53,37 +53,47 @@
       Mueve los puntos para cambiar el polígono. El área se calcula
       automáticamente.
     </p>
+    <div id="canvas-container"></div>
     <div id="area-display" style="font-size: 18px; margin-top: 10px">
       Área disponible: 0 m²
     </div>
     <div id="used-area-display" style="font-size: 18px; margin-top: 10px">
-      Área utilizada: 0 m²
+      Área utilizada: 0 m² | Costo Total: 0 MXN | Utilidad Total: 0 MXN
     </div>
     <div>
       <h2>Tabla de Verduras</h2>
       <table id="vegetable-table">
         <thead>
           <tr>
-            <th>Verdura</th>
+            <th>Producto</th>
             <th>Espacio (m²)</th>
-            <th>Rendimiento (kg)</th>
+            <th>Costo Total por m² (MXN)</th>
+            <th>Rendimiento Anual (kg/m²)</th>
+            <th>Promedio Utilidad (MXN/m²)</th>
+            <th>Producción Total (kg)</th>
+            <th>Utilidad Total (MXN)</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Tomates</td>
+            <td>Pepino</td>
             <td>
               <input
                 class="editable area"
                 type="number"
-                value="10"
+                value="1"
+                min="0"
                 oninput="updateTable()"
               />
             </td>
-            <td>15</td>
+            <td>1230.00</td>
+            <td>23.47</td>
+            <td>-602.80</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
           </tr>
           <tr>
-            <td>Lechugas</td>
+            <td>Jitomate</td>
             <td>
               <input
                 class="editable area"
@@ -92,10 +102,14 @@
                 oninput="updateTable()"
               />
             </td>
-            <td>8</td>
+            <td>1912.00</td>
+            <td>27.18</td>
+            <td>-839.57</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
           </tr>
           <tr>
-            <td>Zanahorias</td>
+            <td>Lechuga</td>
             <td>
               <input
                 class="editable area"
@@ -104,7 +118,91 @@
                 oninput="updateTable()"
               />
             </td>
-            <td>12</td>
+            <td>1044.00</td>
+            <td>9.12</td>
+            <td>-588.00</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
+          </tr>
+          <tr>
+            <td>Zanahoria</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="4"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>816.75</td>
+            <td>1.05</td>
+            <td>-802.14</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
+          </tr>
+          <tr>
+            <td>Cebolla</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="3"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>1084.38</td>
+            <td>0.35</td>
+            <td>-1070.34</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
+          </tr>
+          <tr>
+            <td>Chile</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="6"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>1312.00</td>
+            <td>0.31</td>
+            <td>-1306.42</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
+          </tr>
+          <tr>
+            <td>Tomate</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="8"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>1812.00</td>
+            <td>0.18</td>
+            <td>-1803.79</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
+          </tr>
+          <tr>
+            <td>Frijol</td>
+            <td>
+              <input
+                class="editable area"
+                type="number"
+                value="4"
+                oninput="updateTable()"
+              />
+            </td>
+            <td>859.00</td>
+            <td>0.06</td>
+            <td>-856.29</td>
+            <td class="production">0.00</td>
+            <td class="profit">0.00</td>
           </tr>
         </tbody>
       </table>
@@ -115,7 +213,10 @@
       let currentArea = 0;
 
       function setup() {
-        createCanvas(800, 800);
+        // Crear el canvas y asignarlo al contenedor específico
+        let canvas = createCanvas(800, 800);
+        canvas.elt.id = "polygon-canvas"; // Opcional: asignar un ID al canvas
+        document.getElementById("canvas-container").appendChild(canvas.elt); // Añadir el canvas al contenedor
         initializePolygon(); // Generar polígono inicial
       }
 
@@ -217,16 +318,44 @@
       function updateTable() {
         const rows = document.querySelectorAll("#vegetable-table tbody tr");
         let totalArea = 0;
+        let totalCost = 0;
+        let totalProfit = 0;
 
         rows.forEach((row) => {
           const areaCell = row.querySelector(".area");
-          const requiredArea = parseFloat(areaCell.value) || 0;
-          totalArea += requiredArea;
+          const productionCell = row.querySelector(".production");
+          const profitCell = row.querySelector(".profit");
+
+          let area = parseFloat(areaCell.value) || 0;
+          if (area < 1) {
+            area = 0;
+            areaCell.value = area; // Restablecer el valor a 1 si es menor
+          }
+          const costPerM2 = parseFloat(row.children[2].innerText); // Costo por m²
+          const yieldPerM2 = parseFloat(row.children[3].innerText); // Rendimiento por m²
+          const profitPerM2 = parseFloat(row.children[4].innerText); // Utilidad por m²
+
+          // Calcular costos, producción total y utilidad total
+          const production = area * yieldPerM2;
+          const profit = area * profitPerM2;
+          const cost = area * costPerM2;
+
+          productionCell.innerText = production.toFixed(2);
+          profitCell.innerText = profit.toFixed(2);
+
+          totalArea += area;
+          totalCost += cost;
+          totalProfit += profit;
         });
 
+        // Actualizar la leyenda con los totales
         document.getElementById(
           "used-area-display"
-        ).innerText = `Área utilizada: ${totalArea.toFixed(2)} m²`;
+        ).innerText = `Área utilizada: ${totalArea.toFixed(
+          2
+        )} m² | Costo Total: ${totalCost.toFixed(
+          2
+        )} MXN | Utilidad Total: ${totalProfit.toFixed(2)} MXN`;
 
         // Verificar si el total excede el área disponible
         rows.forEach((row) => {
